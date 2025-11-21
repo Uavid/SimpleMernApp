@@ -149,6 +149,82 @@ minikube addons enable ingress
 Now your Minikube environment is completely fresh and ready for Jenkins deployment.
 
 
+To Uninstall minikube and kubectl
+
+🧹 STEP 1 — Stop Minikube (if running)
+minikube stop
+minikube delete --all
+
+
+Ignore errors if Minikube is not running.
+
+🧹 STEP 2 — Uninstall Minikube
+If installed via apt:
+sudo apt purge minikube -y
+sudo apt autoremove -y
+
+If installed manually (binary in /usr/local/bin):
+sudo rm -f /usr/local/bin/minikube
+sudo rm -f /usr/bin/minikube
+
+Delete minikube folders:
+rm -rf ~/.minikube
+rm -rf ~/.kube
+
+🧹 STEP 3 — Uninstall kubectl
+If kubectl installed via apt:
+sudo apt purge kubectl -y
+sudo apt autoremove -y
+
+If kubectl installed manually:
+sudo rm -f /usr/local/bin/kubectl
+sudo rm -f /usr/bin/kubectl
+
+Also remove caches:
+rm -rf ~/.kube
+rm -rf /etc/kubernetes
+
+🧹 STEP 4 — Remove Docker containers & images left by Minikube
+
+(optional but recommended)
+
+docker system prune -a --volumes -f
+
+🧹 STEP 5 — Remove systemd services (if any)
+sudo rm -f /etc/systemd/system/minikube.service
+sudo rm -f /etc/systemd/system/kubelet.service
+sudo rm -rf /var/lib/kubelet
+
+🧹 STEP 6 — Check if everything is removed
+Check kubectl:
+kubectl version
+
+
+→ Should show: command not found
+
+Check Minikube:
+minikube version
+
+
+→ Should show: command not found
+
+Check context:
+kubectl config current-context
+
+
+→ Should show: no KUBECONFIG
+
+
+To install minikube and kubectl :
+Minikube :
+curl -LO https://github.com/kubernetes/minikube/releases/latest/download/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube && rm minikube-linux-amd64
+
+Kubectl :
+  curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+  curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256"
+  echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+  sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
 
 
