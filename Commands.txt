@@ -147,3 +147,227 @@ minikube addons enable ingress
 
 
 Now your Minikube environment is completely fresh and ready for Jenkins deployment.
+
+
+
+
+
+////////////////PIPELINE
+
+
+
+
+
+pipeline {
+    agent any
+
+    environment {
+        MINIKUBE_DOCKER_ENV = "eval \$(minikube docker-env)"
+        FRONTEND_IMAGE = "mern-frontend:latest"
+        BACKEND_IMAGE = "mern-backend:latest"
+    }
+
+    stages {
+
+        stage('Start Minikube') {
+            steps {
+                script {
+                    sh """
+                        if ! minikube status | grep -q 'host: Running'; then
+                            echo "Starting Minikube..."
+                            minikube start --driver=docker
+                            minikube addons enable ingress
+                        else
+                            echo "Minikube already running."
+                        fi
+                    """
+                }
+            }
+        }
+
+
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Uavid/SimpleMernApp.git'
+            }
+        }
+
+        stage('Use Minikube Docker Daemon') {
+            steps {
+                sh "${MINIKUBE_DOCKER_ENV}"
+            }
+        }
+
+        stage('Enable Ingress Addon') {
+            steps {
+                sh """
+                    echo "Enabling Ingress Addon..."
+                    minikube addons enable ingress
+                """
+            }
+        }
+
+        stage('Build Backend Docker Image') {
+            steps {
+                dir('backend') {
+                    sh """
+                        ${MINIKUBE_DOCKER_ENV}
+                        docker build -t ${BACKEND_IMAGE} .
+                    """
+                }
+            }
+        }
+
+        stage('Build Frontend Docker Image') {
+            steps {
+                dir('frontend') {
+                    sh """
+                        ${MINIKUBE_DOCKER_ENV}
+                        docker build -t ${FRONTEND_IMAGE} .
+                    """
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh """
+                    kubectl apply -f k8s/backend-deployment.yaml
+                    kubectl apply -f k8s/backend-service.yaml
+                    kubectl apply -f k8s/frontend-deployment.yaml
+                    kubectl apply -f k8s/frontend-service.yaml
+                    kubectl apply -f k8s/ingress.yaml
+                """
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh "kubectl get pods -o wide"
+                sh "kubectl get svc"
+                sh "kubectl get ingress"
+                sh "minikube ip"
+            }
+        }
+
+        stage('Hello') {
+            steps {
+                echo 'Hello World'
+            }
+        }
+    }
+}
+
+
+
+
+
+
+pipeline {
+    agent any
+
+    environment {
+        MINIKUBE_DOCKER_ENV = "eval \$(minikube docker-env)"
+        FRONTEND_IMAGE = "mern-frontend:latest"
+        BACKEND_IMAGE = "mern-backend:latest"
+    }
+
+    stages {
+
+        stage('Start Minikube') {
+            steps {
+                script {
+                    sh """
+                        if ! minikube status | grep -q 'host: Running'; then
+                            echo "Starting Minikube..."
+                            minikube start --driver=docker
+                            minikube addons enable ingress
+                        else
+                            echo "Minikube already running."
+                        fi
+                    """
+                }
+            }
+        }
+
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Uavid/SimpleMernApp.git'
+            }
+        }
+
+        stage('Use Minikube Docker Daemon') {
+            steps {
+                sh "${MINIKUBE_DOCKER_ENV}"
+            }
+        }
+
+        stage('Build Backend Image if Changed') {
+            when {
+                changeset "backend/**"
+            }
+            steps {
+                sh """
+                    echo "Backend code changed. Building backend image..."
+                    docker rmi -f ${BACKEND_IMAGE} || true
+                    docker build -t ${BACKEND_IMAGE} backend/
+                """
+                script {
+                    env.BACKEND_CHANGED = "true"
+                }
+            }
+        }
+
+        stage('Build Frontend Image if Changed') {
+            when {
+                changeset "frontend/**"
+            }
+            steps {
+                sh """
+                    echo "Frontend code changed. Building frontend image..."
+                    docker rmi -f ${FRONTEND_IMAGE} || true
+                    docker build -t ${FRONTEND_IMAGE} frontend/
+                """
+                script {
+                    env.FRONTEND_CHANGED = "true"
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            when {
+                expression {
+                    return env.FRONTEND_CHANGED == "true" || env.BACKEND_CHANGED == "true"
+                }
+            }
+            steps {
+                echo "Changes detected. Deploying services..."
+                sh """
+                    kubectl apply -f k8s/backend-deployment.yaml
+                    kubectl apply -f k8s/frontend-deployment.yaml
+                    kubectl apply -f k8s/ingress.yaml
+                """
+            }
+        }
+
+        stage('Skip If No Changes') {
+            when {
+                expression {
+                    return !(env.FRONTEND_CHANGED == "true" || env.BACKEND_CHANGED == "true")
+                }
+            }
+            steps {
+                echo "No code changes. Skipping build & deploy."
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh "kubectl get pods -o wide"
+                sh "kubectl get svc"
+                sh "kubectl get ingress"
+                sh "minikube ip"
+            }
+        }
+    }
+}

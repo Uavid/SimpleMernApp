@@ -11,7 +11,7 @@ function App() {
 
   return (
     <div style={{ padding: "50px", fontSize: "24px" }}>
-      <h1>Frontend Running ✔</h1>
+      <h1>Frontend Running fine ✔</h1>
       <p>Backend says: {data}</p>
     </div>
   );
