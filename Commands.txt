@@ -1,0 +1,149 @@
+👉 How to Build & Deploy (Very Simple Steps)
+
+Step 1 — Start Minikube
+minikube start --driver=docker
+
+Step 2 — Enable Ingress
+minikube addons enable ingress
+
+Step 3 — Build Docker Images Inside Minikube
+eval $(minikube docker-env)
+
+docker build -t backend-image:1.0 ./backend
+docker build -t frontend-image:1.0 ./frontend
+
+Step 4 — Apply All Kubernetes Files
+kubectl apply -f k8s/
+
+Step 5 — Get Minikube IP
+minikube ip
+
+
+Example output:
+
+192.168.49.2
+
+🚀 Now open the app:
+
+👉 http://192.168.49.2
+
+It will show:
+
+Frontend Running ✔
+Backend says: Hello from Backend 🚀
+
+
+
+
+
+
+
+
+✅ 1. Delete All Kubernetes Resources
+
+Run this to remove everything in Minikube’s Kubernetes cluster:
+
+Delete all deployments
+kubectl delete deployment --all
+
+Delete all services (except Kubernetes default service)
+kubectl delete svc --all
+
+Delete all pods
+kubectl delete pod --all
+
+Delete ingress
+kubectl delete ingress --all
+
+Delete configmaps & secrets
+kubectl delete configmap --all
+kubectl delete secret --all
+
+✅ 2. Delete All Docker Images Inside Minikube
+
+Switch docker to Minikube:
+
+eval $(minikube docker-env)
+
+
+Then list and delete all images:
+
+docker images
+docker rmi -f $(docker images -q)
+
+✅ 3. Completely Reset Minikube (FULL CLEAN-UP)
+Stop Minikube
+minikube stop
+
+Delete Minikube cluster
+minikube delete --all --purge
+
+🔥 (Optional but Recommended) Restart Minikube Clean
+minikube start
+
+🔧 Now re-enable ingress (since it resets after delete)
+minikube addons enable ingress
+
+💡 After Reset, it will be fresh like new.
+
+Now Jenkins can:
+
+Build fresh docker images
+
+Apply fresh deployments
+
+No old pods/containers
+
+No old services
+
+No old ingress
+
+
+✔ To delete ALL of them safely: delete the Minikube cluster.
+
+You cannot remove those images while Minikube is running because Kubernetes core components are using them.
+
+✅ Fix: Completely Wipe Minikube (Safe & Clean)
+1. Stop Minikube
+minikube stop
+
+2. Delete the cluster
+minikube delete --purge --all
+
+
+This will remove:
+
+✔ All containers
+✔ All images
+✔ All volumes
+✔ All pods
+✔ All K8s system components
+
+🔥 Now switch Docker back to your HOST (important)
+
+After deleting minikube, run:
+
+eval $(minikube docker-env -u)
+
+
+This resets Docker back to the host machine.
+
+🧹 Now delete all remaining local Docker images
+
+(You will now be deleting images from your host, not from Minikube’s internal env)
+
+docker rmi -f $(docker images -aq)
+
+
+This time no image is locked, so everything will get deleted.
+
+🚀 Recreate Minikube fresh
+minikube start
+
+
+Enable ingress again:
+
+minikube addons enable ingress
+
+
+Now your Minikube environment is completely fresh and ready for Jenkins deployment.
